@@ -13,8 +13,8 @@
 
 #ifdef __LIBRETRO__
 extern void libretro_do_restart (int argc, TCHAR **argv);
-extern unsigned int libretro_runloop_active;
-extern unsigned int libretro_frame_end;
+extern uint8_t libretro_runloop_active;
+extern uint8_t libretro_frame_end;
 #endif
 
 extern void do_start_program (void);
@@ -82,14 +82,16 @@ struct bstring {
 extern TCHAR *colormodes[];
 extern int saveimageoriginalpath;
 extern void fetch_saveimagepath (TCHAR*, int, int);
-extern void fetch_configurationpath (TCHAR *out, int size);
-extern void fetch_luapath (TCHAR *out, int size);
-extern void fetch_screenshotpath (TCHAR *out, int size);
-extern void fetch_ripperpath (TCHAR *out, int size);
-extern void fetch_statefilepath (TCHAR *out, int size);
-extern void fetch_inputfilepath (TCHAR *out, int size);
-extern void fetch_datapath (TCHAR *out, int size);
-extern void fetch_rompath (TCHAR *out, int size);
+extern void fetch_configurationpath(TCHAR *out, int size);
+extern void fetch_nvrampath(TCHAR *out, int size);
+extern void fetch_luapath(TCHAR *out, int size);
+extern void fetch_screenshotpath(TCHAR *out, int size);
+extern void fetch_ripperpath(TCHAR *out, int size);
+extern void fetch_statefilepath(TCHAR *out, int size);
+extern void fetch_inputfilepath(TCHAR *out, int size);
+extern void fetch_datapath(TCHAR *out, int size);
+extern void fetch_rompath(TCHAR *out, int size);
+extern void fetch_videopath(TCHAR *out, int size);
 extern uae_u32 uaerand (void);
 extern uae_u32 uaesrand (uae_u32 seed);
 extern uae_u32 uaerandgetseed (void);

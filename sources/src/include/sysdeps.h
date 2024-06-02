@@ -23,6 +23,19 @@
 #define UAE
 #endif
 
+#ifdef __cplusplus
+#include <string>
+using namespace std;
+#else
+#include <string.h>
+#include <ctype.h>
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <assert.h>
+#include <limits.h>
+
 #ifdef _WIN32
 /* Parameters are passed in ECX, EDX for both x86 and x86-64 (RCX, RDX).
  * For x86-64, __fastcall is the default, so it isn't really required. */
@@ -42,6 +55,12 @@
 #define REGPARAM
 #define REGPARAM2 JITCALL
 #define REGPARAM3 JITCALL
+
+#if CPU_64_BIT
+#define addrdiff(a, b) ((int)((a) - (b)))
+#else
+#define addrdiff(a, b) ((a) - (b))
+#endif
 
 #if defined(__cplusplus)
 #include <cstddef>
@@ -349,10 +368,18 @@ uae_atomic atomic_inc(volatile uae_atomic *p);
 uae_atomic atomic_dec(volatile uae_atomic *p);
 uae_u32 atomic_bit_test_and_reset(volatile uae_atomic *p, uae_u32 v);
 
+#ifdef HAVE_STRDUP
+extern char *x_strdup(const char *str);
+#define my_strdup x_strdup
+#else
+extern char *my_strdup (const char *s);
+#endif
 extern void my_trim (TCHAR*);
 extern TCHAR *my_strdup_trim (const TCHAR*);
 extern void to_lower (TCHAR *s, int len);
 extern void to_upper (TCHAR *s, int len);
+extern int uaestrlen(const char*);
+extern int uaetcslen(const TCHAR*);
 
 #define ENUMDECL typedef enum
 #define ENUMNAME(name) name
@@ -469,6 +496,8 @@ extern void mallocemu_free (void *ptr);
 #include "machdep/machdep.h"
 #endif
 
+#define error_log     write_log
+#define uae_log       write_log
 #define write_dlog    write_log
 #define write_log_err write_log
 #define console_out   write_log
@@ -636,6 +665,9 @@ extern bool use_long_double;
 #ifndef _vsntprintf
 #define _vsntprintf vsnprintf
 #endif
+#ifndef _stscanf
+#define _stscanf sscanf
+#endif
 #ifndef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
@@ -691,6 +723,16 @@ typedef int64_t off64_t;
 #define O_NDELAY 0
 #endif
 
+#ifndef MAXUINT
+#define MAXUINT ((unsigned int)~ ((unsigned int)0))
+#endif
+#ifndef MAXINT
+#define MAXINT ((int) (MAXUINT >> 1))
+#endif
+#ifndef MININT
+#define MININT ((int)~MAXINT)
+#endif
+
 /* Types */
 #define UINT16 uint16_t
 #define UINT32 uint32_t
@@ -698,11 +740,6 @@ typedef uint32_t uint32;
 typedef uint8_t uint8;
 
 #include "misc.h"
-
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 
 #ifdef VITA
 #include <psp2/types.h>

@@ -44,7 +44,7 @@ static long last_press_time = 0;
 static bool let_go_of_button = true;
 static long last_press_time_button = 0;
 static int vkey_pressed = -1;
-static int vkey_sticky = -1;
+static int vkey_sticky  = -1;
 static int vkey_sticky1 = -1;
 static int vkey_sticky2 = -1;
 
@@ -407,9 +407,9 @@ void print_vkbd(void)
       XKEYSPACING        = 2;
       XOFFSET            = -1;
 
+      /* PUAE_VIDEO_HIRES_DOUBLELINE */
       if (video_config_geometry & PUAE_VIDEO_DOUBLELINE)
       {
-         /* PUAE_VIDEO_HIRES_DOUBLELINE */
          FONT_HEIGHT    *= 2;
          YKEYSPACING    *= 2;
          YPADDING       *= 2;
@@ -424,11 +424,13 @@ void print_vkbd(void)
       }
    }
 
+   XOFFSET      += retrox_crop;
+
    int XSIDE     = (320 * FONT_WIDTH) / VKBDX;
-   int YSIDE     = 21 * FONT_HEIGHT;
+   int YSIDE     = (172 * FONT_HEIGHT) / VKBDY;
 
    XPADDING      = retrow_crop - (XSIDE * VKBDX);
-   YPADDING      = retroh_crop - (YSIDE * VKBDY);
+   YPADDING      = retroh_crop + (retroy_crop * 2) - (YSIDE * VKBDY);
 
    int XBASEKEY  = (XPADDING > 0) ? (XPADDING / 2) : 0;
    int YBASEKEY  = (YPADDING > 0) ? (YPADDING / 2) : 0;
@@ -463,6 +465,8 @@ void print_vkbd(void)
                       || vkey_sticky1 == RETROK_RSHIFT || vkey_sticky2 == RETROK_RSHIFT)
       shifted = true;
    if (vkflag[RETRO_DEVICE_ID_JOYPAD_B] && (vkey_pressed == RETROK_LSHIFT || vkey_pressed == RETROK_RSHIFT))
+      shifted = true;
+   if (retro_key_state_internal[RETROK_LSHIFT] || retro_key_state_internal[RETROK_RSHIFT])
       shifted = true;
 
    /* Key layout */
@@ -578,8 +582,9 @@ void print_vkbd(void)
    }
 
    /* Opacity */
-   BKG_ALPHA = (retro_vkbd_transparent) ?
-         ((BKG_ALPHA == GRAPH_ALPHA_100) ? GRAPH_ALPHA_100 : GRAPH_ALPHA_75) : GRAPH_ALPHA_100;
+   BKG_ALPHA = (retro_vkbd_transparent)
+         ? ((BKG_ALPHA == GRAPH_ALPHA_100) ? GRAPH_ALPHA_100 : GRAPH_ALPHA_75)
+         : GRAPH_ALPHA_100;
 
    /* Selected key */
    int current_key_pos = (vkey_pos_y * VKBDX) + vkey_pos_x + page;
@@ -663,17 +668,19 @@ void print_vkbd(void)
 
    /* Gap backgrounds */
    if (VKBDX_GAP_POS)
-      draw_fbox(XOFFSET+XBASEKEY+(VKBDX_GAP_POS*XSIDE)+FONT_WIDTH, vkbd_y_min-FONT_HEIGHT,
-                vkbd_x_gap_pad-FONT_WIDTH, vkbd_y_max-vkbd_y_min+(FONT_HEIGHT*2),
+      draw_fbox(XOFFSET+XBASEKEY+(VKBDX_GAP_POS * XSIDE)+FONT_WIDTH, vkbd_y_min-FONT_HEIGHT,
+                vkbd_x_gap_pad-FONT_WIDTH, vkbd_y_max-vkbd_y_min+(FONT_HEIGHT * 2),
                 0, BRD_ALPHA);
 
    if (VKBDY_GAP_POS)
    {
-      draw_fbox(vkbd_x_min-FONT_WIDTH, YOFFSET+YBASEKEY+(VKBDY_GAP_POS*YSIDE)+FONT_HEIGHT,
-                vkbd_x_max-vkbd_x_min+FONT_WIDTH+XKEYSPACING+FONT_WIDTH, vkbd_y_gap_pad-FONT_HEIGHT,
+      unsigned lores_offset = (retrow_crop < 361 && retrow_crop % 2 == 0);
+
+      draw_fbox(vkbd_x_min-FONT_WIDTH, YOFFSET+YBASEKEY+(VKBDY_GAP_POS * YSIDE)+FONT_HEIGHT,
+                vkbd_x_max-vkbd_x_min+(FONT_WIDTH * 2)+XKEYSPACING+((lores_offset) ? -XKEYSPACING : 0), vkbd_y_gap_pad-FONT_HEIGHT,
                 0, BRD_ALPHA);
 #if 0
-      draw_fbox(XOFFSET+XBASEKEY+(VKBDX_GAP_POS*XSIDE)+vkbd_x_gap_pad, YOFFSET+YBASEKEY+(VKBDY_GAP_POS*YSIDE)+FONT_HEIGHT,
+      draw_fbox(XOFFSET+XBASEKEY+(VKBDX_GAP_POS * XSIDE)+vkbd_x_gap_pad, YOFFSET+YBASEKEY+(VKBDY_GAP_POS * YSIDE)+FONT_HEIGHT,
                 XSIDE+FONT_WIDTH, vkbd_y_gap_pad-FONT_HEIGHT,
                 0, BRD_ALPHA);
 #endif
@@ -689,14 +696,14 @@ void print_vkbd(void)
       corner_y_min = 0;
       corner_y_max = vkbd_y_min - YKEYSPACING;
       draw_fbox(0, corner_y_min,
-                retrow_crop, corner_y_max,
+                retrow, corner_y_max,
                 0, BRD_ALPHA);
 
       /* Bottom */
       corner_y_min = vkbd_y_max + YKEYSPACING;
-      corner_y_max = retroh_crop - vkbd_y_max - YKEYSPACING;
+      corner_y_max = retroh - vkbd_y_max - YKEYSPACING;
       draw_fbox(0, corner_y_min,
-                retrow_crop, corner_y_max,
+                retrow, corner_y_max,
                 0, BRD_ALPHA);
 
       /* Left + Right */
@@ -706,7 +713,7 @@ void print_vkbd(void)
                 vkbd_x_min - XKEYSPACING, corner_y_max,
                 0, BRD_ALPHA);
       draw_fbox(vkbd_x_max + (XKEYSPACING * 2) + ((lores_offset) ? -XKEYSPACING : 0), corner_y_min,
-                retrow_crop - vkbd_x_max - (XKEYSPACING * (lores_offset ? 1 : 2)), corner_y_max,
+                retrow - vkbd_x_max - (XKEYSPACING * (lores_offset ? 1 : 2)), corner_y_max,
                 0, BRD_ALPHA);
    }
 
@@ -766,18 +773,20 @@ static void input_vkbd_sticky(void)
    {
       vkey_sticky1_release = 0;
       vkey_sticky1 = -1;
-      retro_key_up(vkey_sticky1);
    }
    if (vkey_sticky2_release)
    {
       vkey_sticky2_release = 0;
       vkey_sticky2 = -1;
-      retro_key_up(vkey_sticky2);
    }
 }
 
 static void convert_vkbd_to_mapper(int *vkbd_mapping_key, char **var_value)
 {
+   bool shifted = retro_capslock
+         || retro_key_state_internal[RETROK_LSHIFT]
+         || retro_key_state_internal[RETROK_RSHIFT];
+
    /* Convert VKBD special keys to mapper special keys */
    switch (*vkbd_mapping_key)
    {
@@ -799,7 +808,7 @@ static void convert_vkbd_to_mapper(int *vkbd_mapping_key, char **var_value)
          break;
 
       case VKBD_STATUSBAR_SAVEDISK:
-         if (retro_capslock)
+         if (shifted)
          {
             *var_value = get_variable("puae_mapper_save_disk_toggle");
             *vkbd_mapping_key = 0;
@@ -811,7 +820,7 @@ static void convert_vkbd_to_mapper(int *vkbd_mapping_key, char **var_value)
          }
          break;
       case VKBD_ASPECT_CROP:
-         if (retro_capslock)
+         if (shifted)
          {
             *var_value = get_variable("puae_mapper_crop_toggle");
             *vkbd_mapping_key = 0;
@@ -1035,12 +1044,18 @@ void toggle_vkbd(void)
    retro_vkbd_ready = -2;
    /* Release VKBD controllable joypads */
    memset(joypad_bits, 0, 2*sizeof(joypad_bits[0]));
+#ifdef ANDROID
+   /* Discard mouse input for x frames, thanks to Android
+    * input driver doing ghost mouse clicks.. */
+   if (!retro_vkbd)
+      retro_mouse_discard = 20;
+#endif
 }
 
 void input_vkbd(void)
 {
-   long now = 0;
-   unsigned int i = 0;
+   long now  = 0;
+   uint8_t i = 0;
 
    input_vkbd_sticky();
 
@@ -1061,20 +1076,14 @@ void input_vkbd(void)
 
    now = retro_ticks() / 1000;
 
-   /* VKBD Mouse acceleration */
-   const int mspeed_default = 2;
-   static int mspeed;
-   if (!vkflag[RETRO_DEVICE_ID_JOYPAD_B])
-      mspeed = mspeed_default;
-
    /* Absolute pointer */
    int p_x = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X);
    int p_y = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y);
 
    if (p_x != 0 && p_y != 0 && (p_x != last_pointer_x || p_y != last_pointer_y))
    {
-      int px = (int)((p_x + 0x7fff) * retrow_crop / 0xffff);
-      int py = (int)((p_y + 0x7fff) * retroh_crop / 0xffff);
+      int px = (int)((p_x + 0x7fff) * retrow_crop / 0xffff + retrox_crop);
+      int py = (int)((p_y + 0x7fff) * retroh_crop / 0xffff + retroy_crop);
 
       last_pointer_x = p_x;
       last_pointer_y = p_y;
@@ -1104,6 +1113,12 @@ void input_vkbd(void)
       printf("px:%d py:%d (%d,%d) vkey:%dx%d\n", p_x, p_y, px, py, vkey_pos_x, vkey_pos_y);
 #endif
    }
+
+   /* VKBD Mouse acceleration */
+   const int mspeed_default = 2;
+   static int mspeed;
+   if (!vkflag[RETRO_DEVICE_ID_JOYPAD_B])
+      mspeed = mspeed_default;
 
    /* Press Return, RetroPad Start */
    i = RETRO_DEVICE_ID_JOYPAD_START;
@@ -1200,6 +1215,10 @@ void input_vkbd(void)
 
       if (vkey_pressed != -1 && last_vkey_pressed == -1)
       {
+         bool shifted = retro_capslock
+               || retro_key_state_internal[RETROK_LSHIFT]
+               || retro_key_state_internal[RETROK_RSHIFT];
+
          switch (vkey_pressed)
          {
             case VKBD_NUMPAD:
@@ -1208,7 +1227,7 @@ void input_vkbd(void)
             case VKBD_RESET: /* Reset on release */
                break;
             case VKBD_STATUSBAR_SAVEDISK:
-               if (retro_capslock)
+               if (shifted)
                   emu_function(EMU_SAVE_DISK);
                else
                   emu_function(EMU_STATUSBAR);
@@ -1220,7 +1239,7 @@ void input_vkbd(void)
                emu_function(EMU_TURBO_FIRE);
                break;
             case VKBD_ASPECT_CROP:
-               if (retro_capslock)
+               if (shifted)
                   emu_function(EMU_CROP);
                else
                   emu_function(EMU_ASPECT_RATIO);
@@ -1272,18 +1291,18 @@ void input_vkbd(void)
                   if (retro_capslock)
                      retro_key_down(RETROK_LSHIFT);
 
-                  if (!vkey_sticky)
-                  {
-                     if (vkey_pressed == vkey_sticky1)
-                        vkey_sticky1_release = 1;
-                     if (vkey_pressed == vkey_sticky2)
-                        vkey_sticky2_release = 1;
-                  }
-                  retro_key_down(vkey_pressed);
+                  if (vkey_pressed == vkey_sticky1)
+                     vkey_sticky1_release = 1;
+                  if (vkey_pressed == vkey_sticky2)
+                     vkey_sticky2_release = 1;
+
+                  if (vkey_pressed != vkey_sticky1 && vkey_pressed != vkey_sticky2)
+                     retro_key_down(vkey_pressed);
                }
                break;
          }
       }
+
       last_vkey_pressed = vkey_pressed;
       last_vkey_pressed_time = now;
    }

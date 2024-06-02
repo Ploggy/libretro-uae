@@ -15,7 +15,9 @@
 #ifdef _WIN32
 
 #else
+#ifdef HAVE_MMAN
 #include <sys/mman.h>
+#endif
 #endif
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
@@ -26,6 +28,10 @@
 
 #if defined(LINUX) && defined(CPU_x86_64)
 #define HAVE_MAP_32BIT 1
+#endif
+
+#ifndef NATMEM_OFFSET
+extern uae_u8 *natmem_reserved;
 #endif
 
 // #define CLEAR_MEMORY_ON_COMMIT

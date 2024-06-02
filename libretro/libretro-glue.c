@@ -19,6 +19,7 @@
 #include "disk.h"
 #include "parser.h"
 #include "inputdevice.h"
+#include "newcpu.h"
 extern int mouse_port[NORMAL_JPORTS];
 
 int log_scsi;
@@ -43,13 +44,12 @@ extern unsigned int retro_devices[RETRO_DEVICES];
 bool inputdevice_finalized = false;
 extern int retro_ui_get_pointer_state(uint8_t port, int *px, int *py, uint8_t *pb);
 
-extern unsigned int defaultw;
-extern unsigned int defaulth;
-extern unsigned int width_multiplier;
-extern unsigned int libretro_frame_end;
+extern unsigned short int defaultw;
+extern unsigned short int defaulth;
+extern unsigned char width_multiplier;
+extern uint8_t libretro_frame_end;
 
 unsigned short int* pixbuf = NULL;
-extern unsigned short int retro_bmp[RETRO_BMP_SIZE];
 extern char retro_temp_directory[RETRO_PATH_MAX];
 
 int retro_thisframe_first_drawn_line;
@@ -65,6 +65,7 @@ extern int opt_statusbar_position;
 unsigned int statusbar_message_timer = 0;
 unsigned char statusbar_text[RETRO_PATH_MAX] = {0};
 extern float retro_refresh;
+extern char full_path[RETRO_PATH_MAX];
 
 static bool flag_empty(int val[16])
 {
@@ -294,14 +295,21 @@ void display_current_image(const char *image, bool inserted)
    imagename_local = NULL;
 }
 
-extern void draw_frame_extras(struct vidbuffer *vb, int y_start, int y_end);
+#include "statusline.h"
+extern void draw_status_line(int monid, int line, int statusy);
 static void retro_draw_frame_extras(void)
 {
    struct amigadisplay *ad = &adisplays[0];
    struct vidbuf_description *vidinfo = &ad->gfxvidinfo;
    struct vidbuffer *vb = &vidinfo->drawbuffer;
 
-   draw_frame_extras(&vidinfo->drawbuffer, -1, -1);
+   int slx, sly;
+   int mult = 1;
+   statusline_getpos(vb->monitor_id, &slx, &sly, vb->outwidth, vb->outheight);
+   for (int i = 0; i < TD_TOTAL_HEIGHT * mult; i++) {
+      int line = sly + i;
+      draw_status_line(vb->monitor_id, line, i);
+   }
 }
 
 void print_statusbar(void)
@@ -309,6 +317,7 @@ void print_statusbar(void)
    if (opt_statusbar & STATUSBAR_BASIC && !statusbar_message_timer)
       goto end;
 
+   int BOX_X                = retrox_crop;
    int BOX_Y                = 0;
    int BOX_WIDTH            = 0;
    int BOX_HEIGHT           = 11;
@@ -333,14 +342,14 @@ void print_statusbar(void)
    int FONT_COLOR           = (pix_bytes == 4) ? 0xffffff : 0xffff;;
    int FONT_SLOT            = 34 * FONT_WIDTH;
 
-   int TEXT_X               = 1 * FONT_WIDTH;
+   int TEXT_X               = 1 * FONT_WIDTH + retrox_crop;
    int TEXT_Y               = 0;
    int TEXT_LENGTH          = (video_config & PUAE_VIDEO_DOUBLELINE) ? 128 : 64;
 
    /* Statusbar location */
    /* Top */
    if (opt_statusbar_position < 0)
-      TEXT_Y = BOX_PADDING;
+      TEXT_Y = BOX_PADDING + retroy_crop;
    /* Bottom */
    else
       TEXT_Y = gfxvidinfo->drawbuffer.outheight - opt_statusbar_position - BOX_HEIGHT + BOX_PADDING;
@@ -537,7 +546,7 @@ void print_statusbar(void)
       JOY2_COLOR = joystick_color(jflag[1]);
 
    /* Statusbar output */
-   draw_fbox(0, BOX_Y, BOX_WIDTH, BOX_HEIGHT, 0, GRAPH_ALPHA_100);
+   draw_fbox(BOX_X, BOX_Y, BOX_WIDTH, BOX_HEIGHT, 0, GRAPH_ALPHA_100);
 
    if (statusbar_message_timer)
    {
@@ -573,7 +582,7 @@ void target_save_options (struct zfile* f, struct uae_prefs *p)
 {
 }
 
-int target_parse_option (struct uae_prefs *p, const char *option, const char *value)
+int target_parse_option (struct uae_prefs *p, const char *option, const char *value, int type)
 {
    return 0;
 }
@@ -583,7 +592,6 @@ void target_default_options (struct uae_prefs *p, int type)
    p->start_gui = false;
    p->use_serial = true;
    p->sound_auto = false;
-   p->sound_cdaudio = true;
    p->leds_on_screen = 1;
    p->bogomem.size = 0x00000000;
    p->floppy_auto_ext2 = 2;
@@ -591,14 +599,17 @@ void target_default_options (struct uae_prefs *p, int type)
    p->floppyslots[1].dfxtype = DRV_NONE;
    p->lightpen_crosshair = false;
 
+   p->jports[0].jd[0].id = JSEM_MICE;
+   p->jports[1].jd[0].id = JSEM_JOYS;
+
+   p->gfx_monitor[0].gfx_size_fs.width  = EMULATOR_MAX_WIDTH;
+   p->gfx_monitor[0].gfx_size_fs.height = EMULATOR_MAX_HEIGHT;
+
    /* Required for SCSI CD image mounts */
    p->win32_automount_cddrives = true;
 
    /* Required for parallel port joysticks */
    p->win32_samplersoundcard = -1;
-
-   p->jports[0].id = JSEM_MICE;
-   p->jports[1].id = JSEM_JOYS;
 }
 
 void target_fixup_options (struct uae_prefs *p)
@@ -613,6 +624,7 @@ void target_fixup_options (struct uae_prefs *p)
 void retro_mouse(int port, int dx, int dy)
 {
    mouse_port[port] = 1;
+   cd32_pad_enabled[port] = 0;
    setmousestate(port, 0, dx, 0);
    setmousestate(port, 1, dy, 0);
 }
@@ -620,7 +632,18 @@ void retro_mouse(int port, int dx, int dy)
 void retro_mouse_button(int port, int button, int state)
 {
    mouse_port[port] = 1;
+   cd32_pad_enabled[port] = 0;
    setmousebuttonstate(port, button, state);
+}
+
+static void retro_cd32pad_enable(int port)
+{
+   if (     (retro_devices[port] == RETRO_DEVICE_PUAE_CD32PAD)
+         || (  (retro_devices[port] == RETRO_DEVICE_JOYPAD)
+               && (strstr(full_path, "CD32") || currprefs.cs_compatible == CP_CD32)
+            )
+      )
+      cd32_pad_enabled[port] = 1;
 }
 
 /* Joystick */
@@ -631,6 +654,9 @@ void retro_joystick(int port, int axis, int state)
    {
       int m_port = (port == 0) ? 1 : 0;
       mouse_port[m_port] = 0;
+
+      if (!cd32_pad_enabled[m_port])
+         retro_cd32pad_enable(m_port);
    }
    setjoystickstate(port, axis, state, 1);
 }
@@ -642,6 +668,7 @@ void retro_joystick_analog(int port, int axis, int state)
    {
       int m_port = (port == 0) ? 1 : 0;
       mouse_port[m_port] = 0;
+      cd32_pad_enabled[m_port] = 0;
    }
    setjoystickstate(port, axis, state, 32768);
 }
@@ -653,6 +680,9 @@ void retro_joystick_button(int port, int button, int state)
    {
       int m_port = (port == 0) ? 1 : 0;
       mouse_port[m_port] = 0;
+
+      if (!cd32_pad_enabled[m_port])
+         retro_cd32pad_enable(m_port);
    }
    setjoybuttonstate(port, button, state);
 }
@@ -776,6 +806,7 @@ void unlockscr(struct vidbuffer *vb, int y_start, int y_end)
 
    /* Flag that we should end the frame, return out of retro_run */
    libretro_frame_end = 1;
+   set_special(SPCFLAG_CHECK);
 
    if (lightpen_enabled)
       retro_lightpen_update();
@@ -817,6 +848,7 @@ int graphics_init(bool mousecapture)
 
    reset_drawing();
    graphics_setup();
+   display_change_requested = 0;
 
 #ifdef WITH_MPEG2
    allocvidbuffer(0, &gfxvidinfo->tempbuffer, defaultw, defaulth, pix_bytes * 8);
@@ -1652,33 +1684,86 @@ int qstrcmp(const void *a, const void *b)
    return sensible_strcmp(pa, pb);
 }
 
-void remove_recurse(const char *path)
+int retro_remove(const char *path)
+{
+#if defined(_WIN32) && !defined(LEGACY_WIN32)
+   wchar_t *pathW = utf8_to_utf16_string_alloc(path);
+
+   if (pathW)
+   {
+      if (DeleteFileW(pathW))
+      {
+         free(pathW);
+         return 0;
+      }
+      free(pathW);
+      return -1;
+   }
+
+   return DeleteFile(path);
+#else
+   return remove(path);
+#endif
+}
+
+int retro_rmdir(const char *path)
+{
+#if defined(_WIN32) && !defined(LEGACY_WIN32)
+   wchar_t *pathW = utf8_to_utf16_string_alloc(path);
+
+   if (pathW)
+   {
+      if (RemoveDirectoryW(pathW))
+      {
+         free(pathW);
+         return 0;
+      }
+      free(pathW);
+      return -1;
+   }
+
+   return RemoveDirectory(path);
+#else
+   return rmdir(path);
+#endif
+}
+
+int remove_recurse(const char *path)
 {
    struct dirent *dirp;
    char filename[RETRO_PATH_MAX];
-   DIR *dir = opendir(path);
+   int ret   = 0;
+   RDIR *dir = retro_opendir(path);
    if (dir == NULL)
-      return;
+      return -1;
 
-   while ((dirp = readdir(dir)) != NULL)
+   while (retro_readdir(dir))
    {
-      if (dirp->d_name[0] == '.')
+      const char *name = retro_dirent_get_name(dir);
+
+      if (name[0] == '.')
          continue;
 
-      sprintf(filename, "%s%s%s", path, DIR_SEP_STR, dirp->d_name);
-      log_cb(RETRO_LOG_INFO, "Clean: %s\n", filename);
+      snprintf(filename, sizeof(filename), "%s%s%s", path, DIR_SEP_STR, name);
 
       if (path_is_directory(filename))
-         remove_recurse(filename);
+         ret = remove_recurse(filename);
       else
-         remove(filename);
+         ret = retro_remove(filename);
+
+      if (!ret)
+         log_cb(RETRO_LOG_INFO, "Clean: %s\n", filename);
+      else
+         log_cb(RETRO_LOG_INFO, "Clean fail: %s\n", filename);
    }
 
-   closedir(dir);
+   retro_closedir(dir);
 
    /* Leave the root directory for RAM disk usage */
    if (strcmp(retro_temp_directory, path))
-      rmdir(path);
+      retro_rmdir(path);
+
+   return ret;
 }
 
 int fcopy(const char *src, const char *dst)
@@ -1983,11 +2068,17 @@ void zip_uncompress(const char *in, const char *out, char *lastfile)
          unsigned skip = 0;
          unsigned x    = 0;
 
+#ifdef USE_LIBRETRO_VFS
+         write_filename = strdup(filename_withpath);
+#else
          write_filename = local_to_utf8_string_alloc(filename_withpath);
+#endif
 
+#if 0
          /* Replace non-ascii chars with underscore */
          for (x = 128; x < 256; x++)
             string_replace_all_chars(write_filename, x, '_');
+#endif
 
          err = unzOpenCurrentFilePassword(uf, password);
          if (err != UNZ_OK)

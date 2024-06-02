@@ -18,6 +18,7 @@
 #include "libretro-dc.h"
 #include "string/stdstring.h"
 #include "file/file_path.h"
+#include "retro_dirent.h"
 #include "encodings/utf.h"
 
 extern void reset_drawing(void);
@@ -264,13 +265,15 @@ struct puae_cart_info
 #define RETRO_BMP_SIZE          (EMULATOR_DEF_WIDTH * EMULATOR_DEF_HEIGHT * 4) /* 4x is big enough for 24-bit SuperHires double line */
 
 extern unsigned short int retro_bmp[RETRO_BMP_SIZE];
-extern unsigned int pix_bytes;
-extern int retrow;
-extern int retroh;
-extern int retrow_crop;
-extern int retroh_crop;
-extern unsigned int video_config;
-extern unsigned int video_config_geometry;
+extern uint8_t pix_bytes;
+extern unsigned short int retrow;
+extern unsigned short int retroh;
+extern unsigned short int retrow_crop;
+extern unsigned short int retroh_crop;
+extern unsigned short int retrox_crop;
+extern unsigned short int retroy_crop;
+extern unsigned short int video_config;
+extern unsigned short int video_config_geometry;
 
 #define CROP_NONE            0
 #define CROP_MINIMUM         1
@@ -289,5 +292,16 @@ extern unsigned int video_config_geometry;
 #define CROP_MODE_16_10      4
 #define CROP_MODE_4_3        5
 #define CROP_MODE_5_4        6
+
+#define ANALOG_STICK_SPEED_OPTIONS \
+   { \
+      { "0.1", "10%" }, { "0.2", "20%" }, { "0.3", "30%" }, { "0.4", "40%" }, { "0.5", "50%" },  \
+      { "0.6", "60%" }, { "0.7", "70%" }, { "0.8", "80%" }, { "0.9", "90%" }, { "1.0", "100%" }, \
+      { "1.1", "110%" },{ "1.2", "120%" },{ "1.3", "130%" },{ "1.4", "140%" },{ "1.5", "150%" }, \
+      { "1.6", "160%" },{ "1.7", "170%" },{ "1.8", "180%" },{ "1.9", "190%" },{ "2.0", "200%" }, \
+      { "2.1", "210%" },{ "2.2", "220%" },{ "2.3", "230%" },{ "2.4", "240%" },{ "2.5", "250%" }, \
+      { "2.6", "260%" },{ "2.7", "270%" },{ "2.8", "280%" },{ "2.9", "290%" },{ "3.0", "300%" }, \
+      { NULL, NULL }, \
+   }
 
 #endif /* LIBRETRO_CORE_H */

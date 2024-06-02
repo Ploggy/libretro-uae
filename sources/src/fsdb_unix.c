@@ -149,6 +149,15 @@ static int fsdb_name_invalid_2x (const TCHAR *n, int dir)
             return 2;
     }
 
+#ifdef __LIBRETRO__
+    /* Also illegal chars */
+    for (i = 0; i < l; i++)
+    {
+        if (n[i] < 0)
+            return 2;
+    }
+#endif
+
     return 0; /* the filename passed all checks, now it should be ok */
 }
 
@@ -366,6 +375,16 @@ static char *aname_to_nname(const char *aname, int ascii)
                 break;
             }
         }
+
+#ifdef __LIBRETRO__
+        /* Convert superscript 2 and 3 to normal chars */
+        if (x == 178 || x == 179)
+        {
+            repl = 1;
+            x = (x == 178) ? '2' : '3';
+        }
+#endif
+
         if (i == len - 1) {
             // last character, we can now check the file ending
             if (len >= 5 && strncasecmp(aname + len - 5, ".uaem", 5) == 0) {
@@ -529,15 +548,11 @@ static int fsdb_get_file_info(const char *nname, fsdb_file_info *info)
 
 a_inode *custom_fsdb_lookup_aino_aname(a_inode *base, const TCHAR *aname)
 {
-    char *nname = aname_to_nname(aname, 0);
-    /*find_nname_case(base->nname, &nname);*/
-    char *full_nname = build_nname(base->nname, nname);
+    const char *nname = aname_to_nname(aname, 0);
+    const char *full_nname = build_nname(base->nname, nname);
+
     if (!fsdb_name_invalid(base, aname))
-    {
-        free(full_nname);
-        free(nname);
         return 0;
-    }
 
     fsdb_file_info info;
     fsdb_get_file_info(full_nname, &info);
@@ -546,13 +561,12 @@ a_inode *custom_fsdb_lookup_aino_aname(a_inode *base, const TCHAR *aname)
             free(info.comment);
             info.comment = NULL;
         }
-        free(full_nname);
-        free(nname);
         return NULL;
     }
-    a_inode *aino = xcalloc (a_inode, 1);
+
+    a_inode *aino = xcalloc(a_inode, 1);
     aino->aname = nname_to_aname(nname, 0);
-    aino->nname = full_nname;
+    aino->nname = strdup(full_nname);
 #if 0
     if (info.comment) {
         aino->comment = nname_to_aname(info.comment, 1);
@@ -575,7 +589,7 @@ a_inode *custom_fsdb_lookup_aino_nname(a_inode *base, const TCHAR *nname)
     if (!strstr(nname, UAEFSDB_BEGINS))
         return 0;
 
-    char *full_nname = build_nname(base->nname, nname);
+    const char *full_nname = build_nname(base->nname, nname);
     fsdb_file_info info;
     fsdb_get_file_info(full_nname, &info);
     if (!info.type) {
@@ -583,12 +597,10 @@ a_inode *custom_fsdb_lookup_aino_nname(a_inode *base, const TCHAR *nname)
             free(info.comment);
             info.comment = NULL;
         }
-        free(full_nname);
         return NULL;
     }
-    free(full_nname);
 
-    a_inode *aino = xcalloc (a_inode, 1);
+    a_inode *aino = xcalloc(a_inode, 1);
     aino->aname = nname_to_aname(nname, 0);
     aino->nname = build_nname(base->nname, nname);
 #if 0

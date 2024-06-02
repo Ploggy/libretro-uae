@@ -389,6 +389,9 @@
 /* Define to 1 if the system has the type `_Bool'. */
 #define HAVE__BOOL 1
 
+/* Version number of package */
+#define VERSION "5.0.0"
+
 /* Name of package */
 #define PACKAGE "puae"
 
@@ -402,7 +405,7 @@
 #define PACKAGE_NAME "PUAE"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "PUAE 4.9.1"
+#define PACKAGE_STRING PACKAGE_NAME " " VERSION
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "puae"
@@ -411,7 +414,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.9.1"
+#define PACKAGE_VERSION VERSION
 
 /* Define to the necessary symbol if this constant uses a non-standard name on
    your system. */
@@ -506,8 +509,6 @@
 # define __EXTENSIONS__ 1
 #endif
 
-/* Version number of package */
-#define VERSION "4.9.1"
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
@@ -599,7 +600,18 @@
 #define ftello rftell
 #undef _ftelli64
 #define _ftelli64 rftell
+#else /* NO_LIBRETRO_VFS = 1 */
+#ifndef WIN32
+#undef HANDLE
+#define HANDLE FILE*
 #endif
+#ifndef _fseeki64
+#define _fseeki64 fseeko64
+#endif
+#ifndef _ftelli64
+#define _ftelli64 ftello64
+#endif
+#endif /* USE_LIBRETRO_VFS */
 
 #ifndef PATH_MAX
 #define PATH_MAX    256

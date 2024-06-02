@@ -120,10 +120,16 @@ typedef struct a_inode_struct {
 } a_inode;
 
 #ifdef __LIBRETRO__
+#include <retro_dirent.h>
 struct my_opendir_s
 {
+#if 1
+	RDIR *dh;
+	int dp;
+#else
 	DIR *dh;
 	struct dirent *dp;
+#endif
 };
 
 struct my_openfile_s
@@ -144,7 +150,7 @@ extern TCHAR *build_aname (const TCHAR *d, const TCHAR *n);
 
 /* Filesystem-independent functions.  */
 extern void fsdb_clean_dir (a_inode *);
-extern TCHAR *fsdb_search_dir (const TCHAR *dirname, TCHAR *rel);
+extern TCHAR *fsdb_search_dir (const TCHAR *dirname, TCHAR *rel, TCHAR **relalt);
 extern void fsdb_dir_writeback (a_inode *);
 extern int fsdb_used_as_nname (a_inode *base, const TCHAR *);
 extern a_inode *fsdb_lookup_aino_aname (a_inode *base, const TCHAR *);
