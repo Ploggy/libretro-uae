@@ -153,12 +153,12 @@ else ifneq (,$(filter $(platform), ngc wii wiiu))
    CXX = $(DEVKITPPC)/bin/powerpc-eabi-g++$(EXE_EXT)
    AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
    COMMONFLAGS += -DGEKKO -mcpu=750 -meabi -mhard-float -D__POWERPC__ -D__ppc__ -DWORDS_BIGENDIAN=1
-   COMMONFLAGS += -U__INT32_TYPE__ -U __UINT32_TYPE__ -D__INT32_TYPE__=int
    COMMONFLAGS += -DSDL_BYTEORDER=SDL_BIG_ENDIAN -DBYTE_ORDER=BIG_ENDIAN -D__BIG_ENDIAN__
    STATIC_LINKING=1
    STATIC_LINKING_LINK=1
    ifneq (,$(findstring wiiu,$(platform)))
-      COMMONFLAGS += -DWIIU -DHW_RVL
+      COMMONFLAGS += -DWIIU -D__WUT__ -DHW_WUP -D__wiiu__ -ffunction-sections -fdata-sections
+      COMMONFLAGS += -D_POSIX_THREADS -D_POSIX_THREAD_PRIORITY_SCHEDULING -I$(DEVKITPRO)/wut/include
    else ifneq (,$(findstring wii,$(platform)))
       COMMONFLAGS += -DHW_RVL -mrvl
    else ifneq (,$(findstring ngc,$(platform)))

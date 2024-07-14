@@ -16,5 +16,5 @@
 
 #if defined(WIIU)
 #undef OPTIONSFILENAME
-#define OPTIONSFILENAME "sd:/retroarch/saves/default.uae"
+#define OPTIONSFILENAME "fs:/vol/external01/retroarch/saves/default.uae"
 #endif

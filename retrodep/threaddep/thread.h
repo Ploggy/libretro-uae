@@ -32,121 +32,6 @@ STATIC_INLINE void uae_wait_thread (uae_thread_id tid)
 
 #else /* WIN32 */
 
-#ifdef WIIU
-/* FIXME: write using wiiu semaphore */
-#warning WIIU bad Hack rewrite me 
-
-#define TESTSEM 1
-
-#include <wiiu_pthread.h>
-#include <wiiu/os/semaphore.h>
-
-typedef struct {
-    OSSemaphore *sem;
-} uae_sem_t;
-
-STATIC_INLINE int uae_sem_init (uae_sem_t *sem, int pshared, unsigned int value)
-{
-#ifdef TESTSEM
-	sem->sem = (OSSemaphore *) malloc(sizeof(OSSemaphore));
-	if ( sem->sem ) {
-		OSInitSemaphore(sem->sem,value);
-
-	} else {
-		printf("init sema failed\n");
-		return 1;
-	}
-#else
-    return 0;
-#endif
-}
-
-STATIC_INLINE int uae_sem_destroy (uae_sem_t *sem)
-{
-#ifdef TESTSEM
-	if ( sem->sem ) {
-		free(sem->sem);
-	}
-    return 0;
-#else
-    return 0;
-#endif
-}
-
-STATIC_INLINE int uae_sem_post (uae_sem_t *sem)
-{
-#ifdef TESTSEM
-	int retval;
-
-	if ( ! sem->sem ) {
-		printf("Passed a NULL semaphore");
-		return -1;
-	}
-
-	retval = OSSignalSemaphore(sem->sem);
-	if ( retval < 0 ) {
-		printf("sem_post() failed");
-	}
-	return retval;
-#else
-    return -1;
-#endif
-}
-
-STATIC_INLINE int uae_sem_wait (uae_sem_t *sem)
-{
-#ifdef TESTSEM
-	int retval;
-
-	if ( ! sem->sem ) {
-		printf("Passed a NULL semaphore");
-		return -1;
-	}
-
-	while ( ((retval = OSWaitSemaphore(sem->sem)) == -1)  ) {}
-	if ( retval < 0 ) {
-		printf("sem_wait() failed");
-	}
-	return retval;
-#else
-    return -1;
-#endif
-}
-
-STATIC_INLINE int uae_sem_trywait (uae_sem_t *sem)
-{
-#ifdef TESTSEM
-	int retval;
-
-	if ( ! sem->sem ) {
-		printf("Passed a NULL semaphore");
-		return -1;
-	}
-	retval = 1;
-	if ( OSTryWaitSemaphore (sem->sem) == 0 ) {
-		retval = 0;
-	}
-	return retval;
-#else
-    return -1;
-#endif
-}
-
-STATIC_INLINE int uae_sem_getvalue (uae_sem_t *sem, int *sval)
-{
-#ifdef TESTSEM
-	if ( ! sem->sem ) {
-		printf("Passed a NULL semaphore");
-		return -1;
-	}
-        return OSGetSemaphoreCount (sem->sem);
-#else
-    return -1;
-#endif
-}
-
-#else /* WIIU */
-
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -211,7 +96,6 @@ STATIC_INLINE int uae_sem_getvalue (uae_sem_t *sem, int *sval)
 }
 #endif /* USE_NAMED_SEMAPHORES */
 
-#endif
 
 #include "commpipe.h"
 
