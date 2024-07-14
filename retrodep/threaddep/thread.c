@@ -142,13 +142,6 @@ void uae_set_thread_priority (uae_thread_id *thread, int pri)
 
 #else /* _WIN32 */
 
-#ifdef WIIU
-
-#include <wiiu_pthread.h>
-#include <wiiu/os/semaphore.h>
-
-#else /* WIIU */
-
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -174,10 +167,14 @@ int uae_sem_init (uae_sem_t *sem, int pshared, unsigned int value)
 {
     if (!sem || (sem && sem->sem))
         return -1;
+    #ifdef WIIU
+    sem->sem = (sem_t*)aligned_alloc(32, sizeof(sem_t));
+    #else
     sem->sem = (sem_t*)calloc(1, sizeof(sem_t));
+    #endif
+
     return sem_init (sem->sem, pshared, value);
 }
 #endif /* USE_NAMED_SEMAPHORES */
 
-#endif
 #endif
